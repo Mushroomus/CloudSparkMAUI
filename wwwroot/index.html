@@ -34,6 +34,21 @@
             document.getElementById(imageId).style.display = 'block';
             return true;
         }
+
+        function downloadImage(imageUrl) {
+            const link = document.createElement('a');
+
+            // Set the href to the image URL
+            link.href = imageUrl;
+
+            // Set the download attribute to suggest a filename for saving
+            link.download = imageUrl.split('/').pop(); // This will set the name of the file based on the URL
+
+            // Append the link to the document, click it to start the download, then remove it
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     </script>
 
 </body>

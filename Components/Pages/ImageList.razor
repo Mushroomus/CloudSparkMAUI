@@ -1,6 +1,8 @@
 ﻿@namespace CloudSparkMAUI.Components
 
 @using CloudSparkMAUI.Models
+@using CommunityToolkit.Maui.Alerts
+@using CommunityToolkit.Maui.Core
 @inject CloudSparkMAUI.Services.FirebaseDatabaseService FirebaseDatabaseService
 @inject CloudSparkMAUI.Services.FirebaseStorageService FirebaseStorageService
 @inject IJSRuntime JSRuntime
@@ -83,6 +85,10 @@
             {
                 <div class="card shadow-sm">
                     <img src="@ImageUrl" class="card-img-top" alt="Item Image" />
+                    @if (DeviceInfo.Current.Platform == DevicePlatform.WinUI || DeviceInfo.Current.Platform == DevicePlatform.macOS)
+                    {
+                        <button class="btn btn-primary mt-3" @onclick="DownloadImage">Download Image</button>
+                    }
                 </div>
             }
         </div>
@@ -94,6 +100,7 @@
     private List<Image>? FilteredItems;
     private string? ImageUrl;
     private string? FilterText;
+    private Image? SelectedImage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -129,6 +136,7 @@
         if (item?.Name != null)
         {
             ImageUrl = await FirebaseStorageService.GetImageUrlAsync(item.Name);
+            SelectedImage = item;
         }
     }
 
@@ -136,6 +144,32 @@
     {
         FilterText = e.Value?.ToString();
         ApplyFilter();
+    }
+
+    public async Task DownloadImage()
+    {
+        if (string.IsNullOrEmpty(ImageUrl))
+            return;
+
+        try
+        {
+            var localPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), SelectedImage?.Name + ".png");
+
+            using (var client = new HttpClient())
+            {
+                var imageBytes = await client.GetByteArrayAsync(ImageUrl);
+
+                await File.WriteAllBytesAsync(localPath, imageBytes);
+
+                // Display a Snackbar notification for success
+                var snackBar = Toast.Make("Image downloaded successfully!", ToastDuration.Short);
+                await snackBar.Show();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error downloading the image: {ex.Message}");
+        }
     }
 
     private async Task OpenCamera()
