@@ -25,6 +25,17 @@
 
     <script src="_framework/blazor.webview.js" autostart="false"></script>
 
+    <script>
+        async function captureImage(imageId, imageStream) {
+            const arrayBuffer = await imageStream.arrayBuffer();
+            const blob = new Blob([arrayBuffer]);
+            const url = URL.createObjectURL(blob);
+            document.getElementById(imageId).src = url;
+            document.getElementById(imageId).style.display = 'block';
+            return true;
+        }
+    </script>
+
 </body>
 
 </html>

@@ -1,5 +1,6 @@
 ﻿using CloudSparkMAUI.Models;
 using Firebase.Database;
+using Firebase.Database.Query;
 using Microsoft.Maui.ApplicationModel;
 using Newtonsoft.Json;
 using System;
@@ -27,6 +28,18 @@ namespace CloudSparkMAUI.Services
                 .OnceAsync<Models.Image>();
 
             return data.Select(entry => entry.Object).ToList();
+        }
+
+        public async Task AddItemAsync(string itemName)
+        {
+            var newItem = new Models.Image
+            {
+                Name = itemName
+            };
+
+            await _firebaseClient
+                .Child("items")
+                .PostAsync(newItem);
         }
     }
 }
