@@ -3,6 +3,7 @@
 @using CloudSparkMAUI.Models
 @using CommunityToolkit.Maui.Alerts
 @using CommunityToolkit.Maui.Core
+@inject CloudSparkMAUI.Services.FirebaseFunctionService FirebaseFunctionService
 @inject CloudSparkMAUI.Services.FirebaseDatabaseService FirebaseDatabaseService
 @inject CloudSparkMAUI.Services.FirebaseStorageService FirebaseStorageService
 @inject IJSRuntime JSRuntime
@@ -133,7 +134,14 @@
 
     private async Task OnItemClicked(Image item)
     {
-        if (item?.Name != null)
+        @if (DeviceInfo.Current.Platform == DevicePlatform.Android || DeviceInfo.Current.Platform == DevicePlatform.iOS)
+        {
+            var mainDisplayInfo = DeviceDisplay.Current.MainDisplayInfo;
+
+            var imageBytes = await FirebaseFunctionService.GetImageFunctionAsync("images/" + item.Name, mainDisplayInfo.Width.ToString(), mainDisplayInfo.Height.ToString());
+            ImageUrl = "data:image/png;base64," + Convert.ToBase64String(imageBytes);
+        }
+        else
         {
             ImageUrl = await FirebaseStorageService.GetImageUrlAsync(item.Name);
             SelectedImage = item;

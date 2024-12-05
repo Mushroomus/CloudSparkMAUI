@@ -361,3 +361,4 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/Resources/Keys/cloudspark-42ed1-firebase-adminsdk-8ks4v-b63506ac7b.json

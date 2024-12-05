@@ -17,6 +17,8 @@ namespace CloudSparkMAUI
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                 })
                 .Services
+                .AddSingleton<FirebaseAuthService>()
+                .AddSingleton<FirebaseFunctionService>()
                 .AddSingleton<FirebaseDatabaseService>()
                 .AddSingleton<FirebaseStorageService>();
 
