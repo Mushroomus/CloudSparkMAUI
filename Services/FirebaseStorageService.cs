@@ -4,27 +4,60 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Firebase.Storage;
+using Google.Apis.Auth.OAuth2;
 
 namespace CloudSparkMAUI.Services
 {
     public class FirebaseStorageService
     {
         private const string FirebaseStorageUrl = "cloudspark-42ed1.firebasestorage.app";
+        private FirebaseStorage? _firebaseStorage = null;
 
-        private readonly FirebaseStorage _firebaseStorage;
+        private readonly FirebaseAuthService _firebaseAuthService;
+        private string _cachedToken = string.Empty;
 
         public FirebaseStorageService()
         {
-            _firebaseStorage = new FirebaseStorage(FirebaseStorageUrl);
+            _firebaseAuthService = new FirebaseAuthService();
+        }
+
+        private async Task EnsureFirebaseStorageInitializedOrTokenExpiredAsync()
+        {
+            if (_firebaseStorage == null)
+            {
+                _cachedToken = await GetFirebaseTokenAsync();
+
+                _firebaseStorage = new FirebaseStorage(FirebaseStorageUrl, new FirebaseStorageOptions
+                {
+                    AuthTokenAsyncFactory = () => Task.FromResult(_cachedToken)
+                });
+            }
+            else
+            {
+                string token = await GetFirebaseTokenAsync();
+
+                if (!token.Equals(_cachedToken))
+                {
+                    _firebaseStorage = new FirebaseStorage(FirebaseStorageUrl, new FirebaseStorageOptions
+                    {
+                        AuthTokenAsyncFactory = () => Task.FromResult(token)
+                    });
+                }
+            }
+        }
+
+        private async Task<string> GetFirebaseTokenAsync()
+        {
+            return await _firebaseAuthService.GetTokenAsync();
         }
 
         public async Task<string> GetImageUrlAsync(string imageName)
         {
-            var storage = new FirebaseStorage(FirebaseStorageUrl);
+            await EnsureFirebaseStorageInitializedOrTokenExpiredAsync();
 
             try
             {
-                var imageUrl = await storage
+                var imageUrl = await _firebaseStorage
                     .Child("images")
                     .Child(imageName)
                     .GetDownloadUrlAsync();
@@ -41,10 +74,11 @@ namespace CloudSparkMAUI.Services
         {
             try
             {
-                // Create a reference to the "images" folder and the image name
+                await EnsureFirebaseStorageInitializedOrTokenExpiredAsync();
+
                 var storageReference = _firebaseStorage
-                    .Child("images")  // Folder in Firebase Storage
-                    .Child(imageName); // Image name (e.g., "captured_image.jpg")
+                    .Child("images")
+                    .Child(imageName);
 
                 CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
                 CancellationToken cancellationToken = cancellationTokenSource.Token;
@@ -55,7 +89,6 @@ namespace CloudSparkMAUI.Services
             }
             catch (Exception ex)
             {
-                // Handle any errors during the upload
                 Console.WriteLine($"Error uploading image: {ex.Message}");
             }
         }
