@@ -8,7 +8,9 @@ namespace CloudSparkMAUI.Models
 {
     public class Image
     {
-        public string Name { get; set; }
-        public string Path { get; set; }
+        public string? Name { get; set; }
+        public string? Icon { get; set; }
+        public string? IconUrl { get; set; }
+        public Dictionary<string, object>? Metadata { get; set; }
     }
 }

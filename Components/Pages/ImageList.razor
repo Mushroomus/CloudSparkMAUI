@@ -3,6 +3,7 @@
 @using CloudSparkMAUI.Models
 @using CommunityToolkit.Maui.Alerts
 @using CommunityToolkit.Maui.Core
+@using Newtonsoft.Json.Linq
 @inject CloudSparkMAUI.Services.FirebaseFunctionService FirebaseFunctionService
 @inject CloudSparkMAUI.Services.FirebaseDatabaseService FirebaseDatabaseService
 @inject CloudSparkMAUI.Services.FirebaseStorageService FirebaseStorageService
@@ -67,9 +68,73 @@
                     {
                         <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center mb-2 shadow-sm rounded-3"
                            style="border-top: 2px solid #007bff;" @onclick="() => OnItemClicked(item)">
+                            <div class="d-flex align-items-center me-4">
+                                <!-- Display the Icon Image -->
+                                @if (DeviceInfo.Current.Platform == DevicePlatform.WinUI && !string.IsNullOrEmpty(item.IconUrl))
+                                {
+                                    <img src="@item.IconUrl" alt="@item.Icon" class="me-2" style="width: 30px; height: 30px; object-fit: cover;">
+                                }
+                                else
+                                {
+                                    <i class="bi bi-image me-2" style="font-size: 30px;"></i>
+                                }
+                                <span>@item.Name</span>
+                            </div>
+
+                            @if (item.Metadata != null && item.Metadata.Any())
+                            {
+                                <div class="me-2">
+                                    @{
+                                        var fetchedMetadata = item.Metadata["metadata"] as Dictionary<string, object>;
+
+                                        // Iterate over the top-level metadata
+                                        foreach (var metadataItem in fetchedMetadata)
+                                        {
+                                            <div class="mb-2">
+                                                <strong>
+                                                    @string.Join(" ", metadataItem.Key
+                                                         .Split('_')
+                                                         .Select(word => char.ToUpper(word[0]) + word.Substring(1).ToLower()))
+                                                </strong>
+                                                <br />
+                                                <span>
+                                                    @* Check if the value is a nested dictionary *@
+                                                    @if (metadataItem.Value is JObject nestedObject)
+                                                    {
+                                                        // Nested dictionary, display it recursively
+                                                        var nestedMetadata = nestedObject.ToObject<Dictionary<string, object>>();
+                                                        <div class="ml-3">
+                                                            @foreach (var nestedItem in nestedMetadata)
+                                                            {
+                                                                <div style="margin-left: 20px;">
+                                                                    <strong>
+                                                                        @string.Join(" ", nestedItem.Key
+                                                                             .Split('_')
+                                                                             .Select(word => char.ToUpper(word[0]) + word.Substring(1).ToLower()))
+                                                                    </strong>
+                                                                    <span>@nestedItem.Value</span>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        // Direct value (not a nested dictionary)
+                                                        @metadataItem.Value
+                                                    }
+                                                </span>
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                            }
+                        </a>
+
+                       @*  <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center mb-2 shadow-sm rounded-3"
+                           style="border-top: 2px solid #007bff;" @onclick="() => OnItemClicked(item)">
                             <span>@item.Name</span>
                             <i class="bi bi-image"></i>
-                        </a>
+                        </a> *@
                     }
                 </div>
             }
@@ -97,6 +162,8 @@
 </div>
 
 @code {
+    private Dictionary<string, string> Icons = new Dictionary<string, string>();
+
     private List<Image>? Items;
     private List<Image>? FilteredItems;
     private string? ImageUrl;
@@ -106,13 +173,42 @@
     protected override async Task OnInitializedAsync()
     {
         FilterText = string.Empty;
+        await LoadIconsAsync();
         await LoadItemsAsync();
         ApplyFilter();
     }
 
+    private async Task LoadIconsAsync()
+    {
+        Icons = await FirebaseDatabaseService.GetIconsAsync();
+    }
+
     private async Task LoadItemsAsync()
     {
-        Items = await FirebaseDatabaseService.GetItemsAsync();
+        List<JObject> objects = await FirebaseDatabaseService.GetItemsAsync();
+        Items = new List<Image>();
+
+        foreach (var obj in objects)
+        {
+            var metadata = obj.Properties()
+            .Where(p => p.Name == "metadata")
+            .ToDictionary(
+                p => p.Name,
+                p => p.Value.Type == JTokenType.Object
+                    ? p.Value.ToObject<Dictionary<string, object>>()  // Keep the nested object as is
+                    : (object)p.Value?.ToString() ?? string.Empty
+            );
+
+            string? icon = obj["icon"]?.ToString();
+
+            Items.Add(new Image
+            {
+                Name = obj["image_name"]?.ToString(),
+                Icon = icon,
+                IconUrl = icon != null ? Icons[icon] : null,
+                Metadata = metadata
+            });
+        }
     }
 
     private void ApplyFilter()

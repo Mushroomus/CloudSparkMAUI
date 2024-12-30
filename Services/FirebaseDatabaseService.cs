@@ -4,6 +4,7 @@ using Firebase.Database.Query;
 using Firebase.Storage;
 using Microsoft.Maui.ApplicationModel;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -54,15 +55,31 @@ namespace CloudSparkMAUI.Services
             return await _firebaseAuthService.GetTokenAsync();
         }
 
-        public async Task<List<Models.Image>> GetItemsAsync()
+        public async Task<Dictionary<string, string>> GetIconsAsync()
+        {
+            await EnsureFirebaseStorageInitializedOrTokenExpiredAsync();
+
+            var data = await _firebaseClient
+                .Child("image_categories")
+                .OnceAsync<object>();
+
+            var result = new Dictionary<string, string>();
+
+            foreach (var entry in data)
+                result[entry.Key] = entry.Object.ToString();
+
+            return result;
+        }
+
+        public async Task<List<JObject>> GetItemsAsync()
         {
             await EnsureFirebaseStorageInitializedOrTokenExpiredAsync();
 
             var data = await _firebaseClient
                 .Child("items")
-                .OnceAsync<Models.Image>();
+                .OnceAsync<object>();
 
-            return data.Select(entry => entry.Object).ToList();
+            return data.Select(entry => JObject.FromObject(entry.Object)).ToList();
         }
 
         public async Task AddItemAsync(string itemName)
